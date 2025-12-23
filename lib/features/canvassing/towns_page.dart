@@ -123,13 +123,11 @@ class _TownsPageState extends State<TownsPage> {
             tooltip: 'Reload',
             onPressed: _loadAllTowns,
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Log out',
+          TextButton(
             onPressed: () async {
               try {
                 await Supabase.instance.client.auth.signOut();
-                // AuthGate will automatically route back to SignInPage.
+                // AuthGate will automatically redirect to SignInPage
               } catch (e) {
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -137,6 +135,13 @@ class _TownsPageState extends State<TownsPage> {
                 );
               }
             },
+            child: const Text(
+              'Log out',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),

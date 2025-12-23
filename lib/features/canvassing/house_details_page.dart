@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:chs_companion/core/theme/chs_colors.dart';
+import 'package:geolocator/geolocator.dart';
 
 class HouseDetailsPage extends StatefulWidget {
   final String address;
@@ -25,6 +26,14 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
   late Future<List<Map<String, dynamic>>> _eventsFuture;
 
   bool _isUpdating = false;
+
+  // ===== Step 5: GPS Test State =====
+  double? _userLat;
+  double? _userLon;
+  double? _userAccuracyM;
+  String? _geoError;
+  bool _gettingGeo = false;
+  // ================================
 
   @override
   void initState() {
@@ -54,6 +63,66 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
 
     return response.cast<Map<String, dynamic>>();
   }
+
+  // ===== Step 5: GPS Test Function (NO DB writes) =====
+  Future<void> _testGps() async {
+    setState(() {
+      _gettingGeo = true;
+      _geoError = null;
+    });
+
+    try {
+      // Permissions
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.denied) {
+        setState(() {
+          _geoError = 'permission_denied';
+          _gettingGeo = false;
+        });
+        return;
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        setState(() {
+          _geoError = 'permission_denied_forever';
+          _gettingGeo = false;
+        });
+        return;
+      }
+
+      // Service enabled (may behave differently on web, but still useful)
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        setState(() {
+          _geoError = 'location_services_disabled';
+          _gettingGeo = false;
+        });
+        return;
+      }
+
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 6),
+      );
+
+      setState(() {
+        _userLat = pos.latitude;
+        _userLon = pos.longitude;
+        _userAccuracyM = pos.accuracy;
+        _gettingGeo = false;
+      });
+    } catch (e) {
+      setState(() {
+        _geoError = 'unavailable';
+        _gettingGeo = false;
+      });
+    }
+  }
+  // ====================================================
 
   Future<void> _updateStatus({
     required String fieldBool,
@@ -248,6 +317,8 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
           }
 
           final house = snapshot.data!;
+          final lat = house['lat'];
+          final lon = house['lon'];
           final knocked = house['knocked'] == true;
           final answered = house['answered'] == true;
           final signedUp = house['signed_up'] == true;
@@ -267,6 +338,27 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
                 ),
                 const SizedBox(height: 4),
                 Text('${widget.street}, ${widget.town}'),
+                const SizedBox(height: 16),
+                Text(
+                  'Lat: ${lat ?? "null"}, Lon: ${lon ?? "null"}',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+
+                // ===== Step 5: Test GPS UI =====
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: _gettingGeo ? null : _testGps,
+                  child: Text(_gettingGeo ? 'Getting GPS...' : 'Test GPS'),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _geoError != null
+                      ? 'GPS Error: $_geoError'
+                      : 'User GPS: ${_userLat ?? "null"}, ${_userLon ?? "null"} (±${_userAccuracyM?.toStringAsFixed(0) ?? "?"}m)',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                // =================================
+
                 const SizedBox(height: 16),
 
                 // Current status snapshot
