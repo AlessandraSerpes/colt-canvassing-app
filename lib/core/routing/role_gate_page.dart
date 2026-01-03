@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// TODO: create these pages next (we’ll add files for them)
 import '../../features/stats/manager/manager_dashboard_page.dart';
 import '../../features/stats/canvasser/canvasser_dashboard_page.dart';
 
@@ -22,7 +21,7 @@ class RoleGatePage extends StatelessWidget {
       future: supabase
           .from('profiles')
           .select('role')
-          .eq('user_id', user.id)
+          .match({'user_id': user.id})
           .single()
           .timeout(const Duration(seconds: 8)),
       builder: (context, snapshot) {

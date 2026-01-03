@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'bucket_drilldown_page.dart';
+
 class ManagerDashboardPage extends StatefulWidget {
   const ManagerDashboardPage({super.key});
 
@@ -41,7 +43,7 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
       final startStr = _fmtYmd(_range!.start);
       final endStr = _fmtYmd(_range!.end);
 
-      // IMPORTANT: build query in one chain, don't reassign builders
+      // Server-side date filter, no eq()
       final raw = await _supabase
           .from('v_manager_daily_summary')
           .select()
@@ -53,6 +55,7 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
 
+      // Optional client-side email filter (avoids eq())
       final email = _emailFilter.trim();
       final filtered = email.isEmpty
           ? rows
@@ -98,6 +101,24 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
     final n = v is num ? v : num.tryParse(v.toString());
     if (n == null) return '-';
     return '${(n * 100).toStringAsFixed(1)}%';
+  }
+
+  void _openDrilldown(Map<String, dynamic> r) {
+    final userId = (r['user_id'] ?? '').toString();
+    final email = (r['user_email'] ?? '').toString();
+    final workDateNy = (r['work_date_ny'] ?? '').toString();
+
+    if (userId.isEmpty || workDateNy.isEmpty) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BucketDrilldownPage(
+          userId: userId,
+          userEmail: email,
+          workDateNy: workDateNy,
+        ),
+      ),
+    );
   }
 
   @override
@@ -152,6 +173,7 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
               ],
             ),
             const SizedBox(height: 12),
+
             if (_error != null)
               Container(
                 width: double.infinity,
@@ -162,7 +184,9 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
                 ),
                 child: Text('Error: $_error'),
               ),
+
             const SizedBox(height: 8),
+
             Expanded(
               child: _rows.isEmpty && !_loading
                   ? const Center(child: Text('No rows for selected filters.'))
@@ -183,6 +207,7 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
                         ],
                         rows: _rows.map((r) {
                           return DataRow(
+                            onSelectChanged: (_) => _openDrilldown(r),
                             cells: [
                               DataCell(Text(_num(r['work_date_ny']))),
                               DataCell(Text(_num(r['user_email']))),
