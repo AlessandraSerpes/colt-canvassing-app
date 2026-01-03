@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import '../../canvassing/towns_page.dart';
 import 'bucket_drilldown_page.dart';
 
 class ManagerDashboardPage extends StatefulWidget {
@@ -131,6 +131,15 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
       appBar: AppBar(
         title: const Text('Manager Dashboard'),
         actions: [
+          IconButton(
+            tooltip: 'Go to Towns',
+            icon: const Icon(Icons.map_outlined),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const TownsPage()),
+              );
+            },
+          ),
           IconButton(
             onPressed: _loading ? null : _fetch,
             icon: const Icon(Icons.refresh),

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:chs_companion/core/theme/chs_colors.dart';
+import 'package:chs_companion/core/utils/address_format.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:math' as Math;
 
 class HouseDetailsPage extends StatefulWidget {
-  final String address;
+  final String address; // RAW DB key (keep)
   final String town;
   final String street;
 
@@ -28,14 +29,6 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
 
   bool _isUpdating = false;
 
-  // // ===== Step 5: GPS Test State =====
-  // double? _userLat;
-  // double? _userLon;
-  // double? _userAccuracyM;
-  // String? _geoError;
-  // bool _gettingGeo = false;
-  // ================================
-
   @override
   void initState() {
     super.initState();
@@ -44,7 +37,6 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
   }
 
   Future<Map<String, dynamic>> _loadHouse() async {
-    // Explicit type so no cast is needed later
     final Map<String, dynamic> response = await _supabase
         .from('houses')
         .select('*')
@@ -65,65 +57,6 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
     return response.cast<Map<String, dynamic>>();
   }
 
-  // // ===== Step 5: GPS Test Function (NO DB writes) =====
-  // Future<void> _testGps() async {
-  //   setState(() {
-  //     _gettingGeo = true;
-  //     _geoError = null;
-  //   });
-
-  //   try {
-  //     // Permissions
-  //     var permission = await Geolocator.checkPermission();
-  //     if (permission == LocationPermission.denied) {
-  //       permission = await Geolocator.requestPermission();
-  //     }
-
-  //     if (permission == LocationPermission.denied) {
-  //       setState(() {
-  //         _geoError = 'permission_denied';
-  //         _gettingGeo = false;
-  //       });
-  //       return;
-  //     }
-
-  //     if (permission == LocationPermission.deniedForever) {
-  //       setState(() {
-  //         _geoError = 'permission_denied_forever';
-  //         _gettingGeo = false;
-  //       });
-  //       return;
-  //     }
-
-  //     // Service enabled (may behave differently on web, but still useful)
-  //     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-  //     if (!serviceEnabled) {
-  //       setState(() {
-  //         _geoError = 'location_services_disabled';
-  //         _gettingGeo = false;
-  //       });
-  //       return;
-  //     }
-
-  //     final pos = await Geolocator.getCurrentPosition(
-  //       desiredAccuracy: LocationAccuracy.high,
-  //       timeLimit: const Duration(seconds: 6),
-  //     );
-
-  //     setState(() {
-  //       _userLat = pos.latitude;
-  //       _userLon = pos.longitude;
-  //       _userAccuracyM = pos.accuracy;
-  //       _gettingGeo = false;
-  //     });
-  //   } catch (e) {
-  //     setState(() {
-  //       _geoError = 'unavailable';
-  //       _gettingGeo = false;
-  //     });
-  //   }
-  // }
-  // // ====================================================
   double _haversineMeters(double lat1, double lon1, double lat2, double lon2) {
     const earthRadiusM = 6371000.0;
     double toRad(double deg) => deg * (3.141592653589793 / 180.0);
@@ -139,9 +72,6 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
     final c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return earthRadiusM * c;
   }
-
-  // You need this import at the TOP of the file:
-  // import 'dart:math' as Math;
 
   Future<({
     double? lat,
@@ -216,7 +146,6 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
     required String fieldUser,
     required String eventType, // 'knocked' | 'answered' | 'signed_up'
   }) async {
-    print("Updating house for address == '${widget.address}'");
     final user = _supabase.auth.currentUser;
 
     if (user == null) {
@@ -232,7 +161,7 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
       final now = DateTime.now().toUtc();
       final userIdentifier = user.email ?? user.id;
 
-      // 1) Update the current snapshot on houses
+      // 1) Update the snapshot on houses
       await _supabase
           .from('houses')
           .update({
@@ -241,8 +170,8 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
             fieldUser: userIdentifier,
           })
           .eq('address', widget.address);
-      
-      // Fetch house coords (small query, avoids relying on UI state)
+
+      // Fetch house coords
       final houseCoord = await _supabase
           .from('houses')
           .select('lat, lon')
@@ -252,23 +181,24 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
       final houseLat = (houseCoord['lat'] as num?)?.toDouble();
       final houseLon = (houseCoord['lon'] as num?)?.toDouble();
 
-      // Get user GPS (non-blocking result object)
+      // Get user GPS
       final fix = await _getGeoFixNonBlocking();
 
-      // Compute distance if possible
       double? distanceM;
       String? geoError = fix.geoError;
 
-      if (fix.lat != null && fix.lon != null && houseLat != null && houseLon != null) {
+      if (fix.lat != null &&
+          fix.lon != null &&
+          houseLat != null &&
+          houseLon != null) {
         distanceM = _haversineMeters(fix.lat!, fix.lon!, houseLat, houseLon);
       } else {
-        // If GPS succeeded but house coords missing, capture a helpful reason
         if (geoError == null && (houseLat == null || houseLon == null)) {
           geoError = 'house_missing_coords';
         }
       }
 
-      // 2) Insert a row into house_events (history)
+      // 2) Insert history row
       await _supabase.from('house_events').insert({
         'address': widget.address,
         'created_at': now.toIso8601String(),
@@ -277,7 +207,6 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
         'event_type': eventType,
         'notes': null,
 
-        // Geo info
         'lat': fix.lat,
         'lon': fix.lon,
         'accuracy_m': fix.accuracyM,
@@ -286,7 +215,7 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
         'distance_m': distanceM,
       });
 
-      // 3) Refresh both the house snapshot and the event list
+      // 3) Refresh UI
       setState(() {
         _houseFuture = _loadHouse();
         _eventsFuture = _loadEvents();
@@ -300,24 +229,19 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
         SnackBar(content: Text('Error updating house: $e')),
       );
     } finally {
-      if (mounted) {
-        setState(() => _isUpdating = false);
-      }
+      if (mounted) setState(() => _isUpdating = false);
     }
   }
 
-  // Small helper to make timestamps look nice
   String _formatTimestamp(String? isoString) {
     if (isoString == null || isoString.isEmpty) return '';
     try {
       final dt = DateTime.parse(isoString).toLocal();
 
-      // Date part
       final datePart =
           '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
 
-      // Time part in 12-hour format with AM/PM
-      final hour24 = dt.hour; // 0–23
+      final hour24 = dt.hour;
       final minute = dt.minute;
       final hour12 = (hour24 % 12 == 0) ? 12 : hour24 % 12;
       final ampm = hour24 >= 12 ? 'PM' : 'AM';
@@ -364,7 +288,7 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
         }
 
         return SizedBox(
-          height: 260, // keep it scrollable but not huge
+          height: 260,
           child: ListView.separated(
             itemCount: events.length,
             separatorBuilder: (_, __) => const Divider(height: 1),
@@ -372,8 +296,7 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
               final event = events[index];
               final type = (event['event_type'] as String?) ?? '';
               final email = (event['user_email'] as String?) ?? 'Unknown user';
-              final createdAt =
-                  _formatTimestamp(event['created_at'] as String?);
+              final createdAt = _formatTimestamp(event['created_at'] as String?);
 
               String label;
               Color dotColor;
@@ -413,37 +336,51 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.address),
-      ),
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: _houseFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError || !snapshot.hasData) {
-            return Center(
-              child: Text('Error loading house: ${snapshot.error}'),
-            );
-          }
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _houseFuture,
+      builder: (context, snapshot) {
+        final loading =
+            snapshot.connectionState == ConnectionState.waiting || !snapshot.hasData;
 
-          final house = snapshot.data!;
-          final lat = house['lat'];
-          final lon = house['lon'];
-          final knocked = house['knocked'] == true;
-          final answered = house['answered'] == true;
-          final signedUp = house['signed_up'] == true;
+        // While loading, show a scaffold with raw address (safe fallback)
+        if (loading) {
+          return Scaffold(
+            appBar: AppBar(title: Text(widget.address)),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
 
-          return Padding(
+        if (snapshot.hasError) {
+          return Scaffold(
+            appBar: AppBar(title: Text(widget.address)),
+            body: Center(child: Text('Error loading house: ${snapshot.error}')),
+          );
+        }
+
+        final house = snapshot.data!;
+        final zip = house['zip']?.toString();
+
+        // ✅ Display address uses zip column (fixes missing leading zero)
+        final displayAddress = addressWithZip(widget.address, zip);
+
+        final lat = house['lat'];
+        final lon = house['lon'];
+        final knocked = house['knocked'] == true;
+        final answered = house['answered'] == true;
+        final signedUp = house['signed_up'] == true;
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(displayAddress),
+          ),
+          body: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Address header
                 Text(
-                  widget.address,
+                  displayAddress,
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
@@ -530,9 +467,9 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
                 _buildEventHistory(),
               ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }

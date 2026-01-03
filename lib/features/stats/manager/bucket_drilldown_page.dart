@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../canvassing/towns_page.dart';
 
 class BucketDrilldownPage extends StatefulWidget {
   final String userId; // uuid as string
@@ -80,6 +81,15 @@ class _BucketDrilldownPageState extends State<BucketDrilldownPage> {
       appBar: AppBar(
         title: Text('${widget.userEmail} • ${widget.workDateNy}'),
         actions: [
+          IconButton(
+            tooltip: 'Go to Towns',
+            icon: const Icon(Icons.map_outlined),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const TownsPage()),
+              );
+            },
+          ),
           IconButton(
             onPressed: _loading ? null : _fetch,
             icon: const Icon(Icons.refresh),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:chs_companion/core/theme/chs_colors.dart';
+import 'package:chs_companion/core/utils/address_format.dart';
 
 import 'house_details_page.dart';
 
@@ -41,11 +42,18 @@ class _HousesPageState extends State<HousesPage> {
 
     final houses = (data as List<dynamic>).cast<Map<String, dynamic>>();
 
-    // Sort by address for a stable, predictable order
+    // Sort by DISPLAY address for stable, predictable order
     houses.sort((a, b) {
       final aAddr = (a['address'] ?? '') as String;
       final bAddr = (b['address'] ?? '') as String;
-      return aAddr.toLowerCase().compareTo(bAddr.toLowerCase());
+
+      final aZip = a['zip']?.toString();
+      final bZip = b['zip']?.toString();
+
+      final aDisp = addressWithZip(aAddr, aZip);
+      final bDisp = addressWithZip(bAddr, bZip);
+
+      return aDisp.toLowerCase().compareTo(bDisp.toLowerCase());
     });
 
     debugPrint(
@@ -165,11 +173,12 @@ class _HousesPageState extends State<HousesPage> {
 
                 if (_search.isNotEmpty) {
                   final query = _search.toLowerCase();
-                  houses = houses
-                      .where((h) => ((h['address'] ?? '') as String)
-                          .toLowerCase()
-                          .contains(query))
-                      .toList();
+                  houses = houses.where((h) {
+                    final addr = (h['address'] ?? '') as String;
+                    final zip = h['zip']?.toString();
+                    final disp = addressWithZip(addr, zip);
+                    return disp.toLowerCase().contains(query);
+                  }).toList();
                 }
 
                 if (houses.isEmpty) {
@@ -189,7 +198,14 @@ class _HousesPageState extends State<HousesPage> {
                   ),
                   itemBuilder: (context, index) {
                     final house = houses[index];
+
+                    // Raw DB key (keep this for navigation / queries)
                     final address = (house['address'] ?? '') as String;
+
+                    // Display address (fix ZIP using houses.zip)
+                    final zip = house['zip']?.toString();
+                    final displayAddress = addressWithZip(address, zip);
+
                     final status = _statusForHouse(house);
                     final statusColor = _statusColorForHouse(house);
 
@@ -197,7 +213,7 @@ class _HousesPageState extends State<HousesPage> {
                       color: kChsCard,
                       child: ListTile(
                         title: Text(
-                          address,
+                          displayAddress,
                           style: const TextStyle(
                             color: kChsTextPrimary,
                             fontSize: 16,
@@ -234,7 +250,7 @@ class _HousesPageState extends State<HousesPage> {
                           color: kChsTextSecondary,
                         ),
                         onTap: () async {
-                          // Push to house details
+                          // Push to house details using RAW DB address key
                           await Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => HouseDetailsPage(
