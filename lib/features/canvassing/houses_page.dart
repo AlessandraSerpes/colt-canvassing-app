@@ -31,6 +31,26 @@ class _HousesPageState extends State<HousesPage> {
     _housesFuture = _loadHouses();
   }
 
+  /// Robust display formatter:
+  /// 1) Try your existing helper that replaces the trailing ZIP in `address`.
+  /// 2) If it doesn't replace (regex mismatch), append the padded ZIP safely.
+  String _displayAddress(Map<String, dynamic> house) {
+    final addr = (house['address'] ?? '') as String;
+    final zip = house['zip']?.toString();
+
+    final z = formatZip(zip);
+    if (z.isEmpty) return addr;
+
+    final replaced = addressWithZip(addr, z);
+    if (replaced != addr) return replaced;
+
+    // If address already ends with a 5-digit ZIP, do nothing.
+    if (RegExp(r'\b\d{5}\b\s*$').hasMatch(addr)) return addr;
+
+    // Otherwise append ZIP (prevents "MA 1001" from staying unpadded).
+    return '$addr $z';
+  }
+
   Future<List<Map<String, dynamic>>> _loadHouses() async {
     final data = await _supabase.rpc(
       'get_houses_for_street',
@@ -44,15 +64,8 @@ class _HousesPageState extends State<HousesPage> {
 
     // Sort by DISPLAY address for stable, predictable order
     houses.sort((a, b) {
-      final aAddr = (a['address'] ?? '') as String;
-      final bAddr = (b['address'] ?? '') as String;
-
-      final aZip = a['zip']?.toString();
-      final bZip = b['zip']?.toString();
-
-      final aDisp = addressWithZip(aAddr, aZip);
-      final bDisp = addressWithZip(bAddr, bZip);
-
+      final aDisp = _displayAddress(a);
+      final bDisp = _displayAddress(b);
       return aDisp.toLowerCase().compareTo(bDisp.toLowerCase());
     });
 
@@ -103,10 +116,11 @@ class _HousesPageState extends State<HousesPage> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 16.0),
-            child: Icon(Icons.home_outlined, color: Colors.white),
+        actions: [
+          IconButton(
+            tooltip: 'Back to Towns',
+            icon: const Icon(Icons.home_outlined, color: Colors.white),
+            onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
           ),
         ],
       ),
@@ -174,9 +188,7 @@ class _HousesPageState extends State<HousesPage> {
                 if (_search.isNotEmpty) {
                   final query = _search.toLowerCase();
                   houses = houses.where((h) {
-                    final addr = (h['address'] ?? '') as String;
-                    final zip = h['zip']?.toString();
-                    final disp = addressWithZip(addr, zip);
+                    final disp = _displayAddress(h);
                     return disp.toLowerCase().contains(query);
                   }).toList();
                 }
@@ -202,9 +214,8 @@ class _HousesPageState extends State<HousesPage> {
                     // Raw DB key (keep this for navigation / queries)
                     final address = (house['address'] ?? '') as String;
 
-                    // Display address (fix ZIP using houses.zip)
-                    final zip = house['zip']?.toString();
-                    final displayAddress = addressWithZip(address, zip);
+                    // Display address (robust ZIP formatting)
+                    final displayAddress = _displayAddress(house);
 
                     final status = _statusForHouse(house);
                     final statusColor = _statusColorForHouse(house);

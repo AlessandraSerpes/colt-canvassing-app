@@ -363,8 +363,6 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
         // ✅ Display address uses zip column (fixes missing leading zero)
         final displayAddress = addressWithZip(widget.address, zip);
 
-        final lat = house['lat'];
-        final lon = house['lon'];
         final knocked = house['knocked'] == true;
         final answered = house['answered'] == true;
         final signedUp = house['signed_up'] == true;
@@ -388,12 +386,7 @@ class _HouseDetailsPageState extends State<HouseDetailsPage> {
                 ),
                 const SizedBox(height: 4),
                 Text('${widget.street}, ${widget.town}'),
-                const SizedBox(height: 16),
-                Text(
-                  'Lat: ${lat ?? "null"}, Lon: ${lon ?? "null"}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-
+              
                 const SizedBox(height: 16),
 
                 // Current status snapshot

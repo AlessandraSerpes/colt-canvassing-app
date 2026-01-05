@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/routing/role_gate_page.dart';
+
 
 import 'streets_page.dart';
 
@@ -122,6 +124,15 @@ class _TownsPageState extends State<TownsPage> {
             icon: const Icon(Icons.refresh),
             tooltip: 'Reload',
             onPressed: _loadAllTowns,
+          ),
+          IconButton(
+            tooltip: 'Dashboard',
+            icon: const Icon(Icons.dashboard_outlined),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const RoleGatePage()),
+              );
+            },
           ),
           TextButton(
             onPressed: () async {

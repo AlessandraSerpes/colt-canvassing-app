@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/theme/chs_colors.dart';
 import 'features/auth/sign_in_page.dart';
 import 'features/canvassing/towns_page.dart';
-import 'core/routing/role_gate_page.dart';
 
 
 Future<void> main() async {
@@ -64,7 +63,7 @@ class _AuthGate extends StatelessWidget {
 
         if (session != null) {
           // ✅ User is logged in → route based on role
-          return const RoleGatePage();
+          return const TownsPage();
         }
 
         // ❌ Not logged in → Sign in
