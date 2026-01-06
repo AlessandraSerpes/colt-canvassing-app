@@ -31,24 +31,20 @@ class _HousesPageState extends State<HousesPage> {
     _housesFuture = _loadHouses();
   }
 
-  /// Robust display formatter:
-  /// 1) Try your existing helper that replaces the trailing ZIP in `address`.
-  /// 2) If it doesn't replace (regex mismatch), append the padded ZIP safely.
   String _displayAddress(Map<String, dynamic> house) {
-    final addr = (house['address'] ?? '') as String;
-    final zip = house['zip']?.toString();
+    final addr = (house['address'] ?? '').toString().trim();
 
-    final z = formatZip(zip);
+    // If RPC returns zip under a different key, we support common variants safely.
+    final rawZip = (house['zip'] ?? house['zipcode'] ?? house['postal_code'])?.toString();
+    final z = formatZip(rawZip);
+
     if (z.isEmpty) return addr;
 
-    final replaced = addressWithZip(addr, z);
-    if (replaced != addr) return replaced;
+    // Remove any trailing 4/5-digit ZIP in the address (e.g., "MA 1220" or "MA 01220")
+    final cleaned = addr.replaceAll(RegExp(r'\s+\d{4,5}\s*$'), '');
 
-    // If address already ends with a 5-digit ZIP, do nothing.
-    if (RegExp(r'\b\d{5}\b\s*$').hasMatch(addr)) return addr;
-
-    // Otherwise append ZIP (prevents "MA 1001" from staying unpadded).
-    return '$addr $z';
+    // Append the correctly formatted ZIP
+    return '$cleaned $z';
   }
 
   Future<List<Map<String, dynamic>>> _loadHouses() async {

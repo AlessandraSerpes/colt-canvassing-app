@@ -155,45 +155,45 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
     );
   }
 
-  Widget _summaryCard() {
-    if (_rows.isEmpty) return const SizedBox.shrink();
+  // Widget _summaryCard() {
+  //   if (_rows.isEmpty) return const SizedBox.shrink();
 
-    final totalHours = _rows.fold<num>(0, (s, r) => s + _toNum(r['billable_hours']));
-    final totalBuckets =
-        _rows.fold<num>(0, (s, r) => s + _toNum(r['valid_buckets']));
-    final totalKnocks = _rows.fold<num>(0, (s, r) => s + _toNum(r['total_knocks']));
-    final totalAnswers = _rows.fold<num>(0, (s, r) => s + _toNum(r['answers']));
-    final totalSignups = _rows.fold<num>(0, (s, r) => s + _toNum(r['signed_ups']));
+  //   final totalHours = _rows.fold<num>(0, (s, r) => s + _toNum(r['billable_hours']));
+  //   final totalBuckets =
+  //       _rows.fold<num>(0, (s, r) => s + _toNum(r['valid_buckets']));
+  //   final totalKnocks = _rows.fold<num>(0, (s, r) => s + _toNum(r['total_knocks']));
+  //   final totalAnswers = _rows.fold<num>(0, (s, r) => s + _toNum(r['answers']));
+  //   final totalSignups = _rows.fold<num>(0, (s, r) => s + _toNum(r['signed_ups']));
 
-    final answerRate = totalKnocks > 0 ? (totalAnswers / totalKnocks) : 0;
-    final conversionRate = totalAnswers > 0 ? (totalSignups / totalAnswers) : 0;
-    final knocksPerHr = totalHours > 0 ? (totalKnocks / totalHours) : 0;
+  //   final answerRate = totalKnocks > 0 ? (totalAnswers / totalKnocks) : 0;
+  //   final conversionRate = totalAnswers > 0 ? (totalSignups / totalAnswers) : 0;
+  //   final knocksPerHr = totalHours > 0 ? (totalKnocks / totalHours) : 0;
 
-    return Card(
-      elevation: 0,
-      color: Colors.black.withOpacity(0.03),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Wrap(
-          spacing: 18,
-          runSpacing: 10,
-          children: [
-            _metricBlock('Total Paid Time', '${totalHours.toStringAsFixed(2)} hrs',
-                strong: true),
-            _metricBlock('Valid 15-min Buckets', totalBuckets.toStringAsFixed(0)),
-            _metricBlock('Doors Knocked', totalKnocks.toStringAsFixed(0)),
-            _metricBlock('People Answered', totalAnswers.toStringAsFixed(0)),
-            _metricBlock('Sign-ups', totalSignups.toStringAsFixed(0), strong: true),
-            _metricBlock('Answer Rate', '${(answerRate * 100).toStringAsFixed(1)}%'),
-            _metricBlock('Conversion Rate',
-                '${(conversionRate * 100).toStringAsFixed(1)}%'),
-            _metricBlock('Knocks per Paid Hour', knocksPerHr.toStringAsFixed(2)),
-          ],
-        ),
-      ),
-    );
-  }
+  //   return Card(
+  //     elevation: 0,
+  //     color: Colors.black.withOpacity(0.03),
+  //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  //     child: Padding(
+  //       padding: const EdgeInsets.all(12),
+  //       child: Wrap(
+  //         spacing: 18,
+  //         runSpacing: 10,
+  //         children: [
+  //           _metricBlock('Total Paid Time', '${totalHours.toStringAsFixed(2)} hrs',
+  //               strong: true),
+  //           _metricBlock('Valid 15-min Buckets', totalBuckets.toStringAsFixed(0)),
+  //           _metricBlock('Doors Knocked', totalKnocks.toStringAsFixed(0)),
+  //           _metricBlock('People Answered', totalAnswers.toStringAsFixed(0)),
+  //           _metricBlock('Sign-ups', totalSignups.toStringAsFixed(0), strong: true),
+  //           _metricBlock('Answer Rate', '${(answerRate * 100).toStringAsFixed(1)}%'),
+  //           _metricBlock('Conversion Rate',
+  //               '${(conversionRate * 100).toStringAsFixed(1)}%'),
+  //           _metricBlock('Knocks per Paid Hour', knocksPerHr.toStringAsFixed(2)),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -302,10 +302,10 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
                 child: Text('Error: $_error'),
               ),
 
-            if (_rows.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              _summaryCard(),
-            ],
+            // if (_rows.isNotEmpty) ...[
+            //   const SizedBox(height: 10),
+            //   _summaryCard(),
+            // ],
 
             const SizedBox(height: 8),
 
