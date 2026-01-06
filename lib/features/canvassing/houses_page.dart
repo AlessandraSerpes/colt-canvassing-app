@@ -34,19 +34,31 @@ class _HousesPageState extends State<HousesPage> {
   String _displayAddress(Map<String, dynamic> house) {
     final addr = (house['address'] ?? '').toString().trim();
 
-    // If RPC returns zip under a different key, we support common variants safely.
-    final rawZip = (house['zip'] ?? house['zipcode'] ?? house['postal_code'])?.toString();
-    final z = formatZip(rawZip);
+    // Try to get zip from RPC row (supports common alternative keys)
+    final rawZip =
+        (house['zip'] ?? house['zipcode'] ?? house['postal_code'])?.toString();
+    final zFromRow = formatZip(rawZip);
 
-    if (z.isEmpty) return addr;
+    // If we have a zip from the row, force-replace any trailing 4/5 digit zip in the address
+    if (zFromRow.isNotEmpty) {
+      final cleaned = addr.replaceAll(RegExp(r'\s+\d{4,5}(\-\d{4})?\s*$'), '');
+      return '$cleaned $zFromRow';
+    }
 
-    // Remove any trailing 4/5-digit ZIP in the address (e.g., "MA 1220" or "MA 01220")
-    final cleaned = addr.replaceAll(RegExp(r'\s+\d{4,5}\s*$'), '');
+    // Otherwise, fall back: extract a trailing zip from the address and pad it if needed.
+    // Matches "... 1220", "... 01220", or "... 01220-1234"
+    final m = RegExp(r'(\d{4,5})(-\d{4})?\s*$').firstMatch(addr);
+    if (m == null) return addr;
 
-    // Append the correctly formatted ZIP
-    return '$cleaned $z';
+    final base = (m.group(1) ?? '').trim(); // 4 or 5 digits
+    final plus4 = (m.group(2) ?? '');       // "-1234" or ""
+    final padded = base.padLeft(5, '0');    // 1220 -> 01220
+
+    // Replace just the trailing zip portion with the padded version
+    final cleaned = addr.substring(0, m.start).trimRight();
+    return '$cleaned $padded$plus4';
   }
-
+  
   Future<List<Map<String, dynamic>>> _loadHouses() async {
     final data = await _supabase.rpc(
       'get_houses_for_street',
